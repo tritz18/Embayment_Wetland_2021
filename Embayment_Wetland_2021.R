@@ -141,7 +141,7 @@ Condition_Metrics<-LW_21 %>%
   summarise(Mean_K=mean(K), Mean_Length=mean(Length), Mean_Weight=mean(Weight), SD_K=sd(K,na.rm = FALSE )) %>% 
   na.omit()
 
-#### Joining data files #### 
+#### Joining fish data files #### 
 
 YOY_Final<- left_join(Condition_Metrics, Catch_Sum, by = c("Date", "Location", "Species")) %>% 
   group_by(Date) %>% 
@@ -154,4 +154,20 @@ ggplot(YOY_Final, aes(Study_Day, Shan_Div))+
   stat_regline_equation(aes(alpha=0.5, label = paste("atop(", ..eq.label.., ",", ..rr.label.., ")")), 
                         label.x = -1, label.y =1.6, formula = y~x)+
   theme_bw()
+
+#########################################################################################################
+###############             Combined abiotic and fish data              ################################
+########################################################################################################
+
+Model<- left_join(Abiotic_Final,YOY_Final, by=c("Location", "Study_Day")) %>% 
+  na.omit() %>% 
+  select(-Date_Time, -Date)
+
+path<- "/Users/thorn/OneDrive/Desktop/Embayment_Wetland_2021/Embayment_Wetland_R_Project/Model"
+write.csv(Model, file.path(path, "Embayment_Wetland_Model.csv"), row.names = FALSE)
+
+
+
+
+
 
