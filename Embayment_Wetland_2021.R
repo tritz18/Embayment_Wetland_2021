@@ -9,7 +9,6 @@ library(fracdiff)
 library(factoextra)
 library(tidyverse)
 library(ggpubr)
-options(scipen=999)
 ##################
 
 ################################################################################################################################
@@ -78,8 +77,11 @@ Depth<- Catch_Raw %>%
 Catch_Sum <-Catch_Raw %>%
   filter(Species %in% c("LMB", "SMB", "LEPOMIS", "CYPRINIDAE", "KILLI", "BBH"), LIFE_STAGE %in% c("YOY")) %>% 
   group_by(across(c(Location, Species, Date))) %>% 
-  summarise(Catch= (sum(Catch)))
-
+  summarise(Catch= ((sum(Catch)))) 
+      #summarise(Catch= ((sum(Catch)))) #### use for conformation that log trasnforming catch is needed ####
+#### Distribution plot, must have above line on ####
+ggplot(Catch_Sum, aes(Catch))+
+  geom_histogram(binwidth = 100)
 
 #### Join depth to catch data ####
 Catch_Sum <- left_join(Catch_Sum,Depth, by=c("Date", "Location"))
@@ -92,38 +94,28 @@ LW_21_Raw$Date<-as.POSIXct(LW_21_Raw$Date, format="%Y-%m-%d")
 LW_21_Raw$Length<- as.numeric(LW_21_Raw$Length) 
 LW_21_Raw$Weight<- as.numeric(LW_21_Raw$Weight)
 
-
 #### Cleaning data and create nesting to run lm by species ####
 LW_21<- LW_21_Raw %>% 
-  filter(Species %in% c("LMB", "SMB", "LEPOMIS", "CYPRINIDAE", "KILLI", "CARP")) %>% 
+  filter(Species %in% c("LMB", "SMB", "LEPOMIS", "CYPRINIDAE", "KILLI", "CARP", "BBH")) %>% 
   select(-Notes)
 
-split_by_species<- 
-  LW_21 %>% 
-  group_nest(Species, Date, Location)
+#### Check distributions of length and weight to see if transformation needed ####
 
-#### Linear model by to pull residuals by species ####
+ggplot(LW_21, aes(Length))+
+  geom_histogram()+
+  facet_wrap(~Species)
+ggplot(LW_21, aes(Weight))+
+  geom_histogram()
+ggplot(LW_21, aes(Length, Weight))+
+  geom_point()+
+  facet_wrap(~Species)
+#### Log transform length and weight ####
+
+LW_21<- LW_21 %>% 
+  mutate(Length=(log10(Length)), Weight=(log10(Weight)))
 
 
-LM_Species<- 
-  split_by_species %>% 
-  mutate(model=map(data, ~lm(Length ~ Weight, data = .x)))
-
-Species_Residuals<- LM_Species %>% 
-  mutate(residuals=map(model, residuals)) %>% 
-  select(Species,Date, Location, residuals) %>% 
-  unnest(cols=c(residuals)) 
-
-Species_Residuals$residuals<- as.integer(Species_Residuals$residuals, length=3)
-
-#### Summarize residuals ####
-
-Species_Residuals<- Species_Residuals %>% 
-  group_by(across(c(Date, Species))) %>% 
-  select(residuals) %>% 
-  summarise(Mean_LWR=(mean(residuals)), SD_LWR=(sd(residuals))) %>% 
-  na.omit() 
-
+##################
 #### Summarize condition metrics ####
 Condition_Metrics<-LW_21 %>% 
   group_by(across(c(Species, Date, Location))) %>% 
@@ -134,17 +126,14 @@ Condition_Metrics<-LW_21 %>%
 
 #### Joining data files #### 
 
-Fish_Metric_Final<-  right_join(Species_Residuals, Condition_Metrics, by=c("Species", "Date")) %>% 
-  na.omit() %>% 
+YOY_Final<- left_join(Condition_Metrics, Catch_Sum, by = c("Date", "Location", "Species")) %>% 
   group_by(Date) %>% 
   mutate(Study_Day = cur_group_id()) 
 
-YOY_Final<- left_join(Fish_Metric_Final, Catch_Sum, by = c("Date", "Location", "Species"))
 
-
-ggplot(YOY_Final, aes(Study_Day, Mean_Length))+
+ggplot(YOY_Final, aes(Study_Day, Mean_K))+
   geom_point()+geom_smooth(method="lm")+
   stat_regline_equation(aes(alpha=0.5, label = paste("atop(", ..eq.label.., ",", ..rr.label.., ")")), 
-                        label.x = 0, label.y =50, formula = y~x)+
-  theme_bw()+facet_wrap(~Species, scales="free_y")
+                        label.x = 0, label.y =1.6, formula = y~x)+
+  theme_bw()+facet_wrap(~Species)
 
