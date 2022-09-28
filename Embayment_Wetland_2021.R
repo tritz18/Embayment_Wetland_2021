@@ -9,6 +9,7 @@ library(fracdiff)
 library(factoextra)
 library(tidyverse)
 library(ggpubr)
+library(vegan)
 ##################
 
 ################################################################################################################################
@@ -74,17 +75,33 @@ Depth<- Catch_Raw %>%
 
 
 #### Create Catch dataset grouped by species, date and location ####
+
+shannon<- function(x){
+  
+  rabund<- x[x>0]/sum(x)
+  -sum(rabund *log(rabund))
+}
+
 Catch_Sum <-Catch_Raw %>%
   filter(Species %in% c("LMB", "SMB", "LEPOMIS", "CYPRINIDAE", "KILLI", "BBH"), LIFE_STAGE %in% c("YOY")) %>% 
   group_by(across(c(Location, Species, Date))) %>% 
   summarise(Catch= ((sum(Catch)))) 
-      #summarise(Catch= ((sum(Catch)))) #### use for conformation that log trasnforming catch is needed ####
+
+
+Shannon_Data<- Catch_Sum %>% 
+  group_by(across(c(Date, Location))) %>%
+  select(Catch) %>% 
+  summarise(Shan_Div = shannon(Catch))
+
+Catch_Shannon<- left_join(Catch_Sum, Shannon_Data, by=c("Date", "Location"))
+
+      #summarise(Catch= ((sum(Catch)))) #### use for conformation that log transforming catch is needed ####
 #### Distribution plot, must have above line on ####
 ggplot(Catch_Sum, aes(Catch))+
   geom_histogram(binwidth = 100)
 
 #### Join depth to catch data ####
-Catch_Sum <- left_join(Catch_Sum,Depth, by=c("Date", "Location"))
+Catch_Sum <- left_join(Catch_Shannon,Depth, by=c("Date", "Location"))
 
 #### LW metrics #### 
 
@@ -128,12 +145,13 @@ Condition_Metrics<-LW_21 %>%
 
 YOY_Final<- left_join(Condition_Metrics, Catch_Sum, by = c("Date", "Location", "Species")) %>% 
   group_by(Date) %>% 
-  mutate(Study_Day = cur_group_id()) 
+  mutate(Study_Day = cur_group_id())  %>% 
+  na.omit()
 
 
-ggplot(YOY_Final, aes(Study_Day, Mean_K))+
+ggplot(YOY_Final, aes(Study_Day, Shan_Div))+
   geom_point()+geom_smooth(method="lm")+
   stat_regline_equation(aes(alpha=0.5, label = paste("atop(", ..eq.label.., ",", ..rr.label.., ")")), 
-                        label.x = 0, label.y =1.6, formula = y~x)+
-  theme_bw()+facet_wrap(~Species)
+                        label.x = -1, label.y =1.6, formula = y~x)+
+  theme_bw()
 
