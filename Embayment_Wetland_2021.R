@@ -1,15 +1,9 @@
 #### Packages ####
-
+library(tidyverse)
 library(lubridate)
 library(stats)
-library(tidyr)
-library(fpp3)
 library(broom)
-library(fracdiff)
-library(factoextra)
-library(tidyverse)
 library(ggpubr)
-library(vegan)
 ##################
 
 ################################################################################################################################
@@ -17,7 +11,7 @@ library(vegan)
 ###############################################################################################################################
 
 #### Set working directory, where logger files are ###
-setwd("/Users/thorn/OneDrive/Desktop/Embayment_Wetland_2021/Embayment_Wetland_R_Project/")
+setwd("/Users/thorn/OneDrive/Desktop/Embayment_Wetland_2021/Embayment_Wetland_R_Project/Loggers/")
 f = list.files(pattern="*.csv")
 
 #### Clean data and summarize #### 
@@ -59,7 +53,7 @@ Abiotic_Final<- left_join(Abiotic_Hrs,Abiotic_Sum, by=c("Date_Time", "Location")
 
 #### set working directory to catch data #####
 
-setwd("/Users/thorn/OneDrive/Desktop/Embayment_Wetland_2021/Embayment_Wetland_R_Project/Catch_Data")
+setwd("/Users/thorn/OneDrive/Desktop/Embayment_Wetland_2021/Embayment_Wetland_R_Project/Catch")
 
 #### Format catch data ####
 Catch_Raw<- read.csv("EM_2021_Catch.csv")
