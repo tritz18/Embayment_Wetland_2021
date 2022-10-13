@@ -32,7 +32,7 @@ Emb_Wetlands_Raw <- purrr::map_df(f, function(x) {
 Abiotic_Hrs<- Emb_Wetlands_Raw %>% 
   group_by(across(c(Location, Date_Time))) %>% 
   select(DO, TEMP) %>%
-  summarise(Hyp_Hrs=sum(DO<3.01)/2, Nor_Hrs=sum(DO>3.00)/2,
+  summarise(Hyp_Hrs=sum(DO<=3.99)/2, Nor_Hrs=sum(DO>=4.00)/2,
             Temp_Hrs=sum(TEMP>28)/2) 
 
 
@@ -78,12 +78,14 @@ shannon<- function(x){
 }
 
 Catch_Sum <-Catch_Raw %>%
-  filter(Species %in% c("LMB", "SMB", "LEPOMIS", "CYPRINIDAE", "KILLI", "BBH"), LIFE_STAGE %in% c("YOY")) %>% 
-  group_by(across(c(Location, Species, Date))) %>% 
+  filter(Species %in% c("LMB", "SMB", "LEPOMIS", "CYPRINIDAE", "KILLI", "BBH"), 
+         LIFE_STAGE %in% c("YOY")) %>% 
+  group_by(across(c(Location, Date))) %>% 
   summarise(Catch= ((sum(Catch)))) 
 
+### Removed speices from group by to get fish data once per day, may be bias ###
 
-Shannon_Data<- Catch_Sum %>% 
+Shannon_Data<- Catch_Raw %>% 
   group_by(across(c(Date, Location))) %>%
   select(Catch) %>% 
   summarise(Shan_Div = shannon(Catch))
@@ -128,23 +130,23 @@ LW_21<- LW_21 %>%
 
 
 ##################
-#### Summarize condition metrics ####
+#### Summarize condition metrics ***Removed species in group by before summarize ***####
 Condition_Metrics<-LW_21 %>% 
   group_by(across(c(Species, Date, Location))) %>% 
   mutate(K=Weight/(Length^3)*100,000) %>% 
-  group_by(across(c(Species, Date, Location))) %>% 
+  group_by(across(c(Date, Location))) %>% 
   summarise(Mean_K=mean(K), Mean_Length=mean(Length), Mean_Weight=mean(Weight), SD_K=sd(K,na.rm = FALSE )) %>% 
   na.omit()
 
-#### Joining fish data files #### 
+#### Joining fish data files #### #### removed species in join ####
 
-YOY_Final<- left_join(Condition_Metrics, Catch_Sum, by = c("Date", "Location", "Species")) %>% 
+YOY_Final<- left_join(Condition_Metrics, Catch_Sum, by = c("Date", "Location")) %>% 
   group_by(Date) %>% 
   mutate(Study_Day = cur_group_id())  %>% 
   na.omit()
 
 
-ggplot(YOY_Final, aes(Study_Day, Shan_Div))+
+ggplot(YOY_Final, aes(Study_Day, Mean_K))+
   geom_point()+geom_smooth(method="lm")+
   stat_regline_equation(aes(alpha=0.5, label = paste("atop(", ..eq.label.., ",", ..rr.label.., ")")), 
                         label.x = -1, label.y =1.6, formula = y~x)+
