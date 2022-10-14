@@ -37,10 +37,15 @@ Abiotic_Hrs<- Emb_Wetlands_Raw %>%
 
 
 #### Summary of abiotic conditions (48 measurements --> 1 per day measurements (mean DO , max temp)) ####
+Change_function<- function(x){
+  max(x)-min(x)
+}
+
 Abiotic_Sum<- Emb_Wetlands_Raw %>% 
   group_by(across(c(Location, Date_Time))) %>% 
   select(DO,TEMP) %>% 
-  summarise(across(c(DO,TEMP), list(mean = mean, max = max, min=min, sd=sd), .names = "{col}_{fn}"))
+  summarise(across(c(DO,TEMP), list(mean = mean, max = max, min=min,
+                                    Change=Change_function), .names = "{col}_{fn}"))
 
 
 #### Combine Datafiles for Abiotic Final (1 per day from summarized loggers and abiotic hours file #### 
@@ -80,7 +85,7 @@ shannon<- function(x){
 Catch_Sum <-Catch_Raw %>%
   filter(Species %in% c("LMB", "SMB", "LEPOMIS", "CYPRINIDAE", "KILLI", "BBH"), 
          LIFE_STAGE %in% c("YOY")) %>% 
-  group_by(across(c(Location, Date))) %>% 
+  group_by(across(c(Location, Date, Species))) %>% 
   summarise(Catch= ((sum(Catch)))) 
 
 ### Removed speices from group by to get fish data once per day, may be bias ###
@@ -130,27 +135,27 @@ LW_21<- LW_21 %>%
 
 
 ##################
-#### Summarize condition metrics ***Removed species in group by before summarize ***####
+#### Summarize condition metrics ####
 Condition_Metrics<-LW_21 %>% 
   group_by(across(c(Species, Date, Location))) %>% 
   mutate(K=Weight/(Length^3)*100,000) %>% 
-  group_by(across(c(Date, Location))) %>% 
+  group_by(across(c(Date, Location, Species))) %>% 
   summarise(Mean_K=mean(K), Mean_Length=mean(Length), Mean_Weight=mean(Weight), SD_K=sd(K,na.rm = FALSE )) %>% 
   na.omit()
 
 #### Joining fish data files #### #### removed species in join ####
 
-YOY_Final<- left_join(Condition_Metrics, Catch_Sum, by = c("Date", "Location")) %>% 
+YOY_Final<- left_join(Condition_Metrics, Catch_Sum, by = c("Date", "Location", "Species")) %>% 
   group_by(Date) %>% 
   mutate(Study_Day = cur_group_id())  %>% 
   na.omit()
 
 
-ggplot(YOY_Final, aes(Study_Day, Mean_K))+
+ggplot(YOY_Final, aes(Study_Day, Catch))+
   geom_point()+geom_smooth(method="lm")+
   stat_regline_equation(aes(alpha=0.5, label = paste("atop(", ..eq.label.., ",", ..rr.label.., ")")), 
                         label.x = -1, label.y =1.6, formula = y~x)+
-  theme_bw()
+  theme_bw()+facet_wrap(~Species)
 
 #########################################################################################################
 ###############             Combined abiotic and fish data              ################################
