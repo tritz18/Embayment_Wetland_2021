@@ -47,11 +47,19 @@ ggplot(Abiotic_Daily_Summary, aes(Date, DO_mean, group=interaction(Location, Sit
   scale_x_datetime(breaks = ("30 days"))+
   facet_wrap(~Location+Site)
 
-ggplot(Abiotic_Daily_Summary, aes(Date, DO_mean, group=Location, color=Location))+
-  geom_line(size=0.8)+geom_hline(yintercept=3, color="red")+
-  theme_bw()+theme(axis.text.x =element_text(angle=90), legend.position = "bottom")+
-  scale_color_manual(values = c("#0072B2", "#009E73"))+
-  scale_x_datetime(breaks = ("30 days"))+
-  facet_wrap(~Site)
+ggplot(Abiotic_Daily_Summary, aes(Date, DO_mean, group=interaction(Location,Site), color=Site))+
+  geom_line(size=0.8)+geom_hline(yintercept=3, color="#D55E00", lty=2)+geom_hline(yintercept = 0, color="#D55E00")+
+  theme_bw()+theme(axis.text.x =element_text(angle=90), legend.position = "bottom", legend.title = element_blank(),
+                   strip.text = element_text(size=13),
+                   axis.text = element_text(size=13),
+                   axis.title.x = element_blank(),
+                   axis.title.y = element_text(size=13),
+                   legend.text = element_text(size = 13))+
+  scale_color_manual(values = c("#0072B2", "#009E73", "#999999"))+
+  scale_x_datetime(breaks= seq(min(Abiotic_Daily_Summary$Date), max(Abiotic_Daily_Summary$Date), length=7),
+                   date_labels = "%m/%d")+scale_y_continuous(breaks=seq(0,18,1))+
+  ylab("Mean Daily Dissolved Oxygen (mg/l)")+
+  facet_wrap(~Location)
+ggsave("Mean_DO_Annual_Trend.png", dpi=300, width=7, height=5)
 
 
