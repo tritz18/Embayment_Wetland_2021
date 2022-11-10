@@ -4,6 +4,7 @@ library(lubridate)
 library(stats)
 library(broom)
 library(ggpubr)
+library(writexl)
 ##################
 
 ################################################################################################################################
@@ -20,18 +21,20 @@ f = list.files(pattern="*.csv")
 Emb_Wetlands_Raw <- purrr::map_df(f, function(x) {
   mydata <- read.csv(x, header = TRUE)
   mydata$Date_Time <- as.POSIXct(mydata$Date_Time,  format="%Y-%m-%d")
-  mydata %>%
-    filter(Date_Time < "2021-07-23" & Date_Time > "2021-06-11") %>% 
-    select(DO, TEMP, Date_Time, Location) %>%
-    group_by(Date_Time, Location)
+  mydata |>
+    filter(Date_Time < "2021-07-23" & Date_Time > "2021-06-11") |> 
+    select(DO, TEMP, Date_Time, Location, Site) |>
+    group_by(Date_Time, Location, Site)
 })
 
+Emb_Wetlands_Raw$Location<-as.factor(Emb_Wetlands_Raw$Location)
+Emb_Wetlands_Raw$Site<-as.factor(Emb_Wetlands_Raw$Site)  
 ##########################################
 
 #### Abiotic hours data creation (1 measurement per day) #### 
-Abiotic_Hrs<- Emb_Wetlands_Raw %>% 
-  group_by(across(c(Location, Date_Time))) %>% 
-  select(DO, TEMP) %>%
+Abiotic_Hrs<- Emb_Wetlands_Raw |> 
+  group_by(across(c(Location, Date_Time, Site))) |> 
+  select(DO, TEMP) |>
   summarise(Hyp_Hrs=sum(DO<=3.99)/2, Nor_Hrs=sum(DO>=4.00)/2,
             Temp_Hrs=sum(TEMP>28)/2) 
 
@@ -41,16 +44,17 @@ Change_function<- function(x){
   max(x)-min(x)
 }
 
-Abiotic_Sum<- Emb_Wetlands_Raw %>% 
-  group_by(across(c(Location, Date_Time))) %>% 
-  select(DO,TEMP) %>% 
+Abiotic_Sum<- Emb_Wetlands_Raw |> 
+  group_by(across(c(Location, Date_Time, Site))) |> 
+  select(DO,TEMP) |> 
   summarise(across(c(DO,TEMP), list(mean = mean, max = max, min=min,
-                                    Change=Change_function), .names = "{col}_{fn}"))
+            Change=Change_function), .names = "{col}_{fn}"))
 
 
 #### Combine Datafiles for Abiotic Final (1 per day from summarized loggers and abiotic hours file #### 
-Abiotic_Final<- left_join(Abiotic_Hrs,Abiotic_Sum, by=c("Date_Time", "Location")) %>% 
-  group_by(Date_Time) %>% 
+Abiotic_Final<- left_join(Abiotic_Hrs,Abiotic_Sum, 
+        by=c("Date_Time", "Location", "Site")) |> 
+  group_by(Date_Time) |> 
   mutate(Study_Day = cur_group_id()) ## Add study day instead of date ##
 
 ###############################################################################################################################
@@ -168,7 +172,7 @@ Model<- left_join(Abiotic_Final,YOY_Final, by=c("Location", "Study_Day")) %>%
 path<- "/Users/thorn/OneDrive/Desktop/Embayment_Wetland_2021/Embayment_Wetland_R_Project/Model"
 write.csv(Model, file.path(path, "Embayment_Wetland_Model.csv"), row.names = FALSE)
 
-
+write_xlsx(Model, "Embayment_Model.xlsx")
 
 
 
